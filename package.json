@@ -18,6 +18,7 @@
 		"php7parser": "git+https://github.com/klesun-misc/php7parser-1.0.8-fork.git#01138984a1bf4f456d70b6160fb482fa894a522e",
 		"vscode-languageserver-types": "^3.5.0",
 		"vscode-languageserver": "latest",
+		"typescript": "^3.7.5",
 		"ts-node": "latest"
 	},
 	"scripts": {}
