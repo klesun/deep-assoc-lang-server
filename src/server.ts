@@ -76,6 +76,7 @@ const main = () => {
 				textDocumentSync: TextDocumentSyncKind.Incremental,
 				// Tell the client that the server supports code completion
 				completionProvider: {
+					triggerCharacters: ['\'', '"', '['],
 				}
 			}
 		};

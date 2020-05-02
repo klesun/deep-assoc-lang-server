@@ -18,7 +18,7 @@ const asPhraseNode = (node: Node): Opt<Phrase> => {
     return 'phraseType' in node ? [node] : [];
 };
 
-const flattenTokens = (node: Node): Token[] => {
+export const flattenTokens = (node: Node): Token[] => {
     if ('children' in node) {
         return node.children.flatMap(flattenTokens);
     } else {
@@ -92,6 +92,7 @@ const Psi = <T extends Node>({traverser, node, doc}: {
 
     return {
         node: node,
+        doc: doc,
         asToken: (tokenType?) => {
             const tokenOpt = asTokenNode(node);
             if (!tokenOpt.length) {
@@ -160,6 +161,7 @@ const Psi = <T extends Node>({traverser, node, doc}: {
 
 interface Psi<T extends Node> {
     node: T,
+    doc: ParsedDocument,
     asToken: (tokenType?: TokenType) => Opt<Psi<Token>>,
     asPhrase: (...phraseTypes: PhraseType[]) => Opt<Psi<Phrase>>,
     parent: () => Opt<Psi<Phrase>>,

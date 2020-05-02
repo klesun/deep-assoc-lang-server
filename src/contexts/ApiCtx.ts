@@ -1,5 +1,3 @@
-import { SymbolStore } from "intelephense/lib/symbolStore";
-import { ParsedDocumentStore } from "intelephense/lib/parsedDocument";
 import { ReferenceStore, Reference } from "intelephense/lib/reference";
 import * as lsp from 'vscode-languageserver-types';
 import { Intelephense } from "intelephense";
