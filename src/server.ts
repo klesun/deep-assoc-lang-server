@@ -55,6 +55,7 @@ const addIntelephenseListeners = async (connection: Connection) => {
 			return apiCtx.getPsiAt({
 				uri: params.textDocument.uri,
 				position: params.position,
+				flush: true,
 			}).flatMap(psi => [
 				...AssocGetPvdr({apiCtx, psi}),
 				...ArrCtorKeyPvdr({apiCtx, psi}),

@@ -6,15 +6,21 @@ import { MemberMergeStrategy } from "intelephense/lib/typeAggregate";
 import { ParseTreeTraverser } from "intelephense/lib/parseTreeTraverser";
 import DirectTypeResolver from "../resolvers/DirectTypeResolver";
 import { Type } from "../structures/Type";
+import Log from "deep-assoc-lang-server/src/Log";
 
 const ApiCtx = ({apiTools}: {
     apiTools: ReturnType<typeof Intelephense.getApiTools>,
 }): IApiCtx => {
 
-    const getPsiAt = ({uri, position}: {uri: string, position: lsp.Position}): Opt<IPsi> => {
+    const getPsiAt = ({uri, position, flush = false}: {
+        uri: string, position: lsp.Position, flush?: boolean,
+    }): Opt<IPsi> => {
         const doc = apiTools.documentStore.find(uri);
         if (!doc) {
             return [];
+        }
+        if (flush) {
+            doc.flush();
         }
         const table = apiTools.symbolStore.getSymbolTable(uri);
         const refTable = apiTools.refStore.getReferenceTable(uri);
@@ -57,7 +63,7 @@ const ApiCtx = ({apiTools}: {
 export default ApiCtx;
 
 export interface IApiCtx {
-    getPsiAt: ({uri, position}: {uri: string, position: lsp.Position}) => Opt<IPsi>,
+    getPsiAt: ({uri, position}: {uri: string, position: lsp.Position, flush?: boolean}) => Opt<IPsi>,
     decl: (ref: Reference) => IPsi[],
     resolveExpr: (exprPsi: IPsi) => Type[],
 }
