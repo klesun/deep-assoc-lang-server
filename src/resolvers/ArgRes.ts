@@ -2,8 +2,8 @@ import { IPsi, Opt } from "../helpers/Psi";
 import { IApiCtx } from "../contexts/ApiCtx";
 import { Type } from "../structures/Type";
 import { PhraseType, TokenType } from "php7parser";
-import Log from "../Log";
 import PsalmTypeExprParser from "../structures/psalm/PsalmTypeExprParser";
+import Log from "deep-assoc-lang-server/src/Log";
 
 /** removes stars */
 const getDocCommentText = (docCommentToken: string): Opt<string> => {

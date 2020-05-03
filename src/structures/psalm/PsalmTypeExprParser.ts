@@ -134,11 +134,11 @@ const PsalmTypeExprParser = (text: string) => {
             return [{kind: 'IRecordArr', entries}];
         } else {
             const unparsed = skipTillClosed('{', '}');
-            return [{kind: 'IRecordArr', entries}];
+            return [{kind: 'IRecordArr', entries, unparsed}];
         }
     };
 
-    const parseSignleValue = (): Opt<Type> => {
+    const parseSingleValue = (): Opt<Type> => {
         unprefix(/\s+/);
         // a comment, just ignore for now
         unprefix(/\/\/.*\n/);
@@ -147,7 +147,7 @@ const PsalmTypeExprParser = (text: string) => {
         if (match = unprefix(/([a-zA-Z\\_][a-zA-Z\\_0-9]*)\s*<\s*/)) {
             const [, fqn] = match;
             const genericsOpt = parseTypeList();
-            if (genericsOpt.length) {
+            if (genericsOpt.length && unprefix(/\s*>\s*/)) {
                 parsed = [{
                     kind: 'IFqn', fqn,
                     generics: genericsOpt[0],
@@ -183,8 +183,24 @@ const PsalmTypeExprParser = (text: string) => {
     };
 
     const parseMultiValue = (): Opt<Type> => {
-        // TODO: support multi
-        return parseSignleValue();
+        const orTypes = parseSingleValue();
+        if (orTypes.length > 0) {
+            while (unprefix(/\s*\|\s*/)) {
+                const next = parseSingleValue();
+                if (next.length) {
+                    orTypes.push(next[0]);
+                } else {
+                    break;
+                }
+            }
+        }
+        if (orTypes.length === 0) {
+            return [];
+        } else if (orTypes.length === 1) {
+            return [orTypes[0]];
+        } else {
+            return [{kind: 'IMt', types: orTypes}];
+        }
     };
 
     return parseMultiValue().map(type => ({

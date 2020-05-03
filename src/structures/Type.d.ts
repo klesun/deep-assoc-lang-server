@@ -1,6 +1,7 @@
 
 interface IType {
     kind: string,
+    unparsed?: string,
 }
 
 interface IStr {
