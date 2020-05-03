@@ -4,7 +4,6 @@ import {
 	ProposedFeatures,
 	InitializeParams,
 	CompletionItem,
-	CompletionItemKind,
 	TextDocumentPositionParams,
 	TextDocumentSyncKind,
 	InitializeResult
@@ -12,7 +11,7 @@ import {
 
 import { Intelephense } from 'intelephense';
 import Log from './Log';
-import AssocKeyPvdr from './entry/AssocKeyPvdr';
+import AssocGetPvdr from './entry/AssocKeyPvdr';
 import ApiCtx from './contexts/ApiCtx';
 import ArrCtorKeyPvdr from 'deep-assoc-lang-server/src/entry/ArrCtorKeyPvdr';
 
@@ -57,7 +56,7 @@ const addIntelephenseListeners = async (connection: Connection) => {
 				uri: params.textDocument.uri,
 				position: params.position,
 			}).flatMap(psi => [
-				...AssocKeyPvdr({apiCtx, psi}),
+				...AssocGetPvdr({apiCtx, psi}),
 				...ArrCtorKeyPvdr({apiCtx, psi}),
 			]);
 		}

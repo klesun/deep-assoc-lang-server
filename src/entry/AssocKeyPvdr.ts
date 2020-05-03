@@ -18,7 +18,7 @@ const getEndOffset = (psi: IPsi): number => {
 };
 
 /** provides completion options in `$arr['<>']` */
-const AssocKeyPvdr = (params: {
+const AssocGetPvdr = (params: {
     apiCtx: IApiCtx, psi: IPsi,
 }): CompletionItem[] => {
     const apiCtx = params.apiCtx;
@@ -64,10 +64,14 @@ const AssocKeyPvdr = (params: {
         const {exprPsi, isQuoted} = qualOpt[0];
         return apiCtx.resolveExpr(exprPsi)
             .flatMap(makeArrKeyCompletionItems)
-            .map(item => ({...item, label: isQuoted ? item.label : '\'' + item.label + '\''}));
+            .map(item => ({...item,
+                label: isQuoted || item.label.match(/^\d+$/)
+                    ? item.label
+                    : '\'' + item.label + '\'',
+                }));
     };
 
     return getCompletions(params.psi);
 };
 
-export default AssocKeyPvdr;
+export default AssocGetPvdr;

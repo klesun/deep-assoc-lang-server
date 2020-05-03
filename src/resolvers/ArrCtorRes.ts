@@ -2,26 +2,7 @@ import { IPsi, Opt } from "../helpers/Psi";
 import { IApiCtx } from "../contexts/ApiCtx";
 import { Type } from "../structures/Type";
 import { PhraseType, TokenType } from "php7parser";
-
-/**
- * @param {String} litText - escaped, like "somekey\t\\Ol\"olo"
- * @return {Opt<string>} - unescaped: somekey    \Ol"olo
- */
-const unquote = (litText: string): Opt<string> => {
-    if (litText.length < 2) {
-        return []; // invalid format
-    }
-    const opening = litText[0];
-    const ending = litText.slice(-1)[0];
-    if (opening !== ending || !['\'', '"'].includes(opening)) {
-        // lol, just googled what backticks do...
-        return []; // invalid format
-    }
-    // TODO: implement
-    //  you do not usually use special characters in key name, so skipping for now,
-    //  since you anyway would want an escaped line break when completing a key name
-    return [litText.slice(1, -1)];
-};
+import { unquote } from "deep-assoc-lang-server/src/helpers/Parsing";
 
 const ArrCtorRes = ({exprPsi, apiCtx}: {
     exprPsi: IPsi, apiCtx: IApiCtx,

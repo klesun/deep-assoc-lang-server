@@ -1,6 +1,25 @@
 import { Opt, opt } from "../../helpers/Psi";
-import { Type, IRecordEntry, IRecordArr } from "../Type";
+import { Type, IRecordEntry, IRecordArr, IFqn } from "../Type";
 const {mkReg} = require('klesun-node-tools/src/Utils/Misc.js');
+
+/**
+ * transform array<T> to IListArr<T> and array<Tk, Tv> to
+ * IMapArr<Tk, Tv> as array is a special case in PSALM syntax
+ */
+const normalizeFqnType = (fqnType: IFqn): Type => {
+    if (fqnType.fqn === 'array') {
+        if (fqnType.generics.length === 1) {
+            return {kind: 'IListArr', valueType: fqnType.generics[0]};
+        } else if (fqnType.generics.length === 2) {
+            return {
+                kind: 'IMapArr',
+                keyType: fqnType.generics[0],
+                valueType: fqnType.generics[1],
+            };
+        }
+    }
+    return fqnType;
+};
 
 /**
  * @see https://github.com/klesun/deep-assoc-completion/blob/master/src/org/klesun/deep_assoc_completion/structures/psalm/PsalmTypeExprParser.java
@@ -148,10 +167,11 @@ const PsalmTypeExprParser = (text: string) => {
             const [, fqn] = match;
             const genericsOpt = parseTypeList();
             if (genericsOpt.length && unprefix(/\s*>\s*/)) {
-                parsed = [{
+                const type: IFqn = {
                     kind: 'IFqn', fqn,
                     generics: genericsOpt[0],
-                }];
+                };
+                parsed = [normalizeFqnType(type)];
             }
         } else if (unprefix(/array\s*\{\s*/)) {
             parsed = parseAssocKeys();
