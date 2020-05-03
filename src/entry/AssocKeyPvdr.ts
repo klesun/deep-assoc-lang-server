@@ -1,14 +1,11 @@
-import { SymbolStore } from "intelephense/lib/symbolStore";
 import { CompletionItem } from "vscode-languageserver";
-import * as lsp from 'vscode-languageserver-types';
 import { Token, Phrase, PhraseType, LexerMode } from 'php7parser';
 
 // ts-node, enums
 import { TokenType } from 'php7parser';
 import Psi, { Opt, IPsi, flattenTokens } from "../helpers/Psi";
-import { Type } from "../structures/Type";
 import { IApiCtx } from "../contexts/ApiCtx";
-import Log from "deep-assoc-lang-server/src/Log";
+import { makeArrKeyCompletionItems } from "deep-assoc-lang-server/src/helpers/UiAdapter";
 
 const getStartOffset = (psi: IPsi): number => {
     return flattenTokens(psi.node)[0].offset;
@@ -20,9 +17,9 @@ const getEndOffset = (psi: IPsi): number => {
     return endToken.offset + endToken.length;
 };
 
+/** provides completion options in `$arr['<>']` */
 const AssocKeyPvdr = (params: {
-    apiCtx: IApiCtx,
-    psi: IPsi,
+    apiCtx: IApiCtx, psi: IPsi,
 }): CompletionItem[] => {
     const apiCtx = params.apiCtx;
 
@@ -66,22 +63,11 @@ const AssocKeyPvdr = (params: {
         }
         const {exprPsi, isQuoted} = qualOpt[0];
         return apiCtx.resolveExpr(exprPsi)
-            .flatMap(t => t.kind === 'IRecordArr' ? t.entries : [])
-            .map(e => e.keyType)
-            .flatMap(kt => kt.kind === 'IStr' ? [kt.content] : [])
-            .map((label, i) => ({
-                label: isQuoted ? label : '\'' + label + '\'',
-                sortText: (i + '').padStart(7, '0'),
-                detail: 'deep-assoc FTW',
-                kind: lsp.CompletionItemKind.Field,
-            }));
+            .flatMap(makeArrKeyCompletionItems)
+            .map(item => ({...item, label: isQuoted ? item.label : '\'' + item.label + '\''}));
     };
 
-    const main = () => {
-        return getCompletions(params.psi);
-    };
-
-    return main();
+    return getCompletions(params.psi);
 };
 
 export default AssocKeyPvdr;

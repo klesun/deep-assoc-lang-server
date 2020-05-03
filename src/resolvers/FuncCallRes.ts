@@ -17,24 +17,24 @@ const findFunctionReturns = (stPsi: Psi<Phrase>): Psi<Phrase>[] => {
     }
 };
 
+export const assertFuncRef = (exprPsi: IPsi): Reference[] => {
+    return [
+        ...exprPsi.asPhrase(PhraseType.FunctionCallExpression)
+            .flatMap(psi => psi.reference),
+        ...exprPsi.asPhrase(PhraseType.MethodCallExpression)
+            .flatMap(psi => psi.children())
+            .flatMap(psi => psi.asPhrase(PhraseType.MemberName))
+            .flatMap(psi => psi.reference),
+        ...exprPsi.asPhrase(PhraseType.ScopedCallExpression)
+            .flatMap(psi => psi.children())
+            .flatMap(psi => psi.asPhrase(PhraseType.ScopedMemberName))
+            .flatMap(psi => psi.reference),
+    ];
+};
+
 const FuncCallRes = ({exprPsi, apiCtx}: {
     exprPsi: IPsi, apiCtx: IApiCtx,
 }) => {
-    const assertFuncRef = (exprPsi: IPsi): Reference[] => {
-        return [
-            ...exprPsi.asPhrase(PhraseType.FunctionCallExpression)
-                .flatMap(psi => psi.reference),
-            ...exprPsi.asPhrase(PhraseType.MethodCallExpression)
-                .flatMap(psi => psi.children())
-                .flatMap(psi => psi.asPhrase(PhraseType.MemberName))
-                .flatMap(psi => psi.reference),
-            ...exprPsi.asPhrase(PhraseType.ScopedCallExpression)
-                .flatMap(psi => psi.children())
-                .flatMap(psi => psi.asPhrase(PhraseType.ScopedMemberName))
-                .flatMap(psi => psi.reference),
-        ];
-    };
-
     const resolveAsFuncCall = (exprPsi: IPsi): Type[] =>
         assertFuncRef(exprPsi)
             .flatMap(apiCtx.decl)

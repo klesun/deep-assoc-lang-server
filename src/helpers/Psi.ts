@@ -119,18 +119,24 @@ const Psi = <T extends Node>({traverser, node, doc}: {
                 return [];
             }
         },
-        prevSibling: () => {
+        prevSibling: (pred?) => {
+            pred = pred || (() => true);
+
             const newTraverser = traverser.clone();
-            newTraverser.prevSibling();
-            if (newTraverser.node) {
-                return [Psi({
+            let prevPsi: IPsi;
+            do {
+                newTraverser.prevSibling();
+                if (!newTraverser.node) {
+                    return [];
+                }
+                prevPsi = Psi({
                     traverser: newTraverser,
                     node: newTraverser.node,
                     doc,
-                })];
-            } else {
-                return [];
-            }
+                });
+            } while (!pred(prevPsi));
+
+            return [prevPsi];
         },
         nextSibling: () => {
             const newTraverser = traverser.clone();
@@ -165,7 +171,11 @@ interface Psi<T extends Node> {
     asToken: (tokenType?: TokenType) => Opt<Psi<Token>>,
     asPhrase: (...phraseTypes: PhraseType[]) => Opt<Psi<Phrase>>,
     parent: () => Opt<Psi<Phrase>>,
-    prevSibling: () => Opt<IPsi>,
+    /**
+     * @param pred - if supplied, will take previous
+     *  siblings till this predicate yields true
+     */
+    prevSibling: (pred?: (psi: IPsi) => boolean) => Opt<IPsi>,
     nextSibling: () => Opt<IPsi>,
     nthChild: (n: number) => Opt<Psi<Node>>,
     children: () => Psi<Node>[],

@@ -43,28 +43,22 @@ const getRawTags = (docText: string) => {
     return tags;
 };
 
-const ArgRes = ({exprPsi, apiCtx}: {
-    exprPsi: IPsi, apiCtx: IApiCtx,
+const ArgRes = ({psi, apiCtx}: {
+    psi: IPsi, apiCtx: IApiCtx,
 }): Type[] => {
-    const resolveArg = (exprPsi: IPsi) => {
-        const argNameOpt = exprPsi.children()
+    const resolveArg = (psi: IPsi) => {
+        const argNameOpt = psi.children()
             .flatMap(psi => psi.asToken(TokenType.VariableName))
             .map(psi => psi.text().slice(1));
 
-        return exprPsi.asPhrase(PhraseType.ParameterDeclaration)
+        return psi.asPhrase(PhraseType.ParameterDeclaration)
             .flatMap(psi => psi.parent())
             .filter(par => par.node.phraseType === PhraseType.ParameterDeclarationList)
             .flatMap(psi => psi.parent())
             .filter(par => par.node.phraseType === PhraseType.FunctionDeclarationHeader)
             .flatMap(psi => psi.parent())
             .filter(par => par.node.phraseType === PhraseType.FunctionDeclaration)
-            .flatMap(psi => {
-                let prevOpt: IPsi[] = psi.prevSibling();
-                while (prevOpt.some(psi => psi.asToken(TokenType.Whitespace).length)) {
-                    prevOpt = prevOpt.flatMap(psi => psi.prevSibling());
-                }
-                return prevOpt;
-            })
+            .flatMap(decl => decl.prevSibling(psi => !psi.asToken(TokenType.Whitespace).length))
             .flatMap(par => par.asToken(TokenType.DocumentComment))
             .flatMap(psi => getDocCommentText(psi.text()))
             .flatMap(getRawTags)
@@ -78,7 +72,7 @@ const ArgRes = ({exprPsi, apiCtx}: {
             .map(parsed => parsed.type);
     };
 
-    return resolveArg(exprPsi);
+    return resolveArg(psi);
 };
 
 export default ArgRes;

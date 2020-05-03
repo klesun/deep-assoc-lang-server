@@ -24,7 +24,7 @@ const VarRes = ({exprPsi, apiCtx}: {
                     .flatMap(ass => ass.children().slice(1).flatMap(psi => psi.asPhrase()))
                     .flatMap(apiCtx.resolveExpr),
                 ...leaf.parent()
-                    .flatMap(exprPsi => ArgRes({exprPsi, apiCtx})),
+                    .flatMap(psi => ArgRes({psi, apiCtx})),
             ]);
     };
 

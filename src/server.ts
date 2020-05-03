@@ -14,6 +14,7 @@ import { Intelephense } from 'intelephense';
 import Log from './Log';
 import AssocKeyPvdr from './entry/AssocKeyPvdr';
 import ApiCtx from './contexts/ApiCtx';
+import ArrCtorKeyPvdr from 'deep-assoc-lang-server/src/entry/ArrCtorKeyPvdr';
 
 type Connection = ReturnType<typeof createConnection>;
 
@@ -55,7 +56,10 @@ const addIntelephenseListeners = async (connection: Connection) => {
 			return apiCtx.getPsiAt({
 				uri: params.textDocument.uri,
 				position: params.position,
-			}).flatMap(psi => AssocKeyPvdr({apiCtx, psi}));
+			}).flatMap(psi => [
+				...AssocKeyPvdr({apiCtx, psi}),
+				...ArrCtorKeyPvdr({apiCtx, psi}),
+			]);
 		}
 	);
 };
