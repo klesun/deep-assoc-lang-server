@@ -6,7 +6,7 @@ import FuncCallRes from "./FuncCallRes";
 import ArrCtorRes from "./ArrCtorRes";
 import Log from "deep-assoc-lang-server/src/Log";
 import { PhraseType, TokenType } from "php7parser";
-import { getKey } from "deep-assoc-lang-server/src/helpers/Typing";
+import { getKeyByPsi } from "deep-assoc-lang-server/src/helpers/Typing";
 
 const DirectTypeResolver = ({exprPsi, apiCtx}: {
     exprPsi: IPsi, apiCtx: IApiCtx,
@@ -20,7 +20,7 @@ const DirectTypeResolver = ({exprPsi, apiCtx}: {
                 .flatMap(bra => bra.nextSibling())
                 .flatMap(keyExpr => {
                     const arrExprTypes = apiCtx.resolveExpr(arrExpr);
-                    const elTypes = arrExprTypes.flatMap(arrt => getKey(arrt, keyExpr));
+                    const elTypes = arrExprTypes.flatMap(arrt => getKeyByPsi(arrt, keyExpr));
                     return elTypes;
                 }));
     };
