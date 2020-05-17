@@ -1,5 +1,5 @@
 import { IPsi } from "../helpers/Psi";
-import { Type } from "../structures/Type";
+import { Type, IStr, IInt } from "../structures/Type";
 import { IApiCtx } from "../contexts/ApiCtx";
 import VarRes from "./VarRes";
 import FuncCallRes from "./FuncCallRes";
@@ -7,6 +7,7 @@ import ArrCtorRes from "./ArrCtorRes";
 import Log from "deep-assoc-lang-server/src/Log";
 import { PhraseType, TokenType } from "php7parser";
 import { getKeyByPsi } from "deep-assoc-lang-server/src/helpers/Typing";
+import CheapTypeResolver from "deep-assoc-lang-server/src/resolvers/CheapTypeResolver";
 
 const DirectTypeResolver = ({exprPsi, apiCtx}: {
     exprPsi: IPsi, apiCtx: IApiCtx,
@@ -26,11 +27,12 @@ const DirectTypeResolver = ({exprPsi, apiCtx}: {
     };
 
     const main = () => {
-        const result = [
+        const result: Type[] = [
             ...ArrCtorRes({exprPsi, apiCtx}),
             ...FuncCallRes({exprPsi, apiCtx}),
             ...VarRes({exprPsi, apiCtx}),
             ...resolveAsAssocGet({exprPsi}),
+            ...CheapTypeResolver({exprPsi}),
         ];
         if (!result.length) {
             //Log.info({'ololo no results for': exprPsi + ''});

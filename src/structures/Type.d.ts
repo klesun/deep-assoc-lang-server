@@ -9,6 +9,11 @@ interface IStr {
     content: string,
 }
 
+interface IInt {
+    kind: 'IInt',
+    value: number,
+}
+
 export interface IRecordEntry {
     keyType: Type,
     valueType: Type,
@@ -51,4 +56,4 @@ interface IFqn extends IType {
     generics: Type[],
 }
 
-export type Type = IRecordArr | IMapArr | IListArr | ITupleArr | IFqn | IStr | IMt | IAny;
+export type Type = IRecordArr | IMapArr | IListArr | ITupleArr | IFqn | IStr | IInt | IMt | IAny;

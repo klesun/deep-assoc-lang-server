@@ -1,7 +1,7 @@
 import { Type, IStr } from "deep-assoc-lang-server/src/structures/Type";
 import { IPsi } from "deep-assoc-lang-server/src/helpers/Psi";
-import { TokenType } from "php7parser";
-import { unquote } from "deep-assoc-lang-server/src/helpers/Parsing";
+import CheapTypeResolver from "deep-assoc-lang-server/src/resolvers/CheapTypeResolver";
+import Log from "deep-assoc-lang-server/src/Log";
 
 export const flattenTypes = (multiType: Type): Type[] => {
     if (multiType.kind === 'IMt') {
@@ -13,6 +13,7 @@ export const flattenTypes = (multiType: Type): Type[] => {
 
 export const getKey = (arrt: Type, keyType: Type): Type[] => {
     const keyNameOpt = keyType.kind === 'IStr' ? [keyType.content] : [];
+    const indexOpt = keyType.kind === 'IInt' ? [keyType.value] : [];
     return flattenTypes(arrt).flatMap(arrt => {
         const valueTypes: Type[] = [];
         if (keyNameOpt.length) {
@@ -24,6 +25,11 @@ export const getKey = (arrt: Type, keyType: Type): Type[] => {
                     e.keyType.content === keyName
                 ).map(e => e.valueType)
             );
+        } else if (arrt.kind === 'ITupleArr' && indexOpt.length) {
+            const index = indexOpt[0];
+            if (index >= 0 && index < arrt.elements.length) {
+                valueTypes.push(arrt.elements[index]);
+            }
         } else if (arrt.kind === 'IListArr') {
             // variable, number or math expression used as a key
             valueTypes.push(arrt.valueType);
@@ -36,9 +42,7 @@ export const getKey = (arrt: Type, keyType: Type): Type[] => {
 };
 
 export const getKeyByPsi = (arrt: Type, keyExpr: IPsi): Type[] => {
-    const keyType = keyExpr.asToken(TokenType.StringLiteral)
-        .flatMap(lit => unquote(lit.text()))
-        .map((content): IStr => ({kind: 'IStr', content}))
+    const keyType = CheapTypeResolver({exprPsi: keyExpr})
         [0] || {kind: 'IAny'};
     return getKey(arrt, keyType);
 };
