@@ -16,16 +16,14 @@ const ApiCtx = ({apiTools}: {
         uri: string, position: lsp.Position, flush?: boolean,
     }): Opt<IPsi> => {
         const doc = apiTools.documentStore.find(uri);
-        if (!doc) {
+        const table = apiTools.symbolStore.getSymbolTable(uri);
+        const refTable = apiTools.refStore.getReferenceTable(uri);
+        if (!doc || !table || !refTable) {
+            Log.info('Tried to access file out of stores - ' + uri + ': ' + [doc, table, refTable]);
             return [];
         }
         if (flush) {
             doc.flush();
-        }
-        const table = apiTools.symbolStore.getSymbolTable(uri);
-        const refTable = apiTools.refStore.getReferenceTable(uri);
-        if (!table || !refTable) {
-            return [];
         }
         const traverser = new ParseTreeTraverser(doc, table, refTable);
         traverser.position(position);

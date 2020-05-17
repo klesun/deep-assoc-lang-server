@@ -6,16 +6,24 @@ import {
 	CompletionItem,
 	TextDocumentPositionParams,
 	TextDocumentSyncKind,
-	InitializeResult
+	InitializeResult,
+	RequestType,
+	TextDocumentItem,
 } from 'vscode-languageserver';
 
-import { Intelephense } from 'intelephense';
+import { Intelephense, LanguageRange } from 'intelephense';
 import Log from './Log';
 import AssocGetPvdr from './entry/AssocKeyPvdr';
 import ApiCtx from './contexts/ApiCtx';
 import ArrCtorKeyPvdr from 'deep-assoc-lang-server/src/entry/ArrCtorKeyPvdr';
+import { TextEdit } from 'vscode';
+import { ParsedDocument } from 'intelephense/lib/parsedDocument';
+import { SymbolTable } from 'intelephense/lib/symbolStore';
+import { ReferenceReader } from 'intelephense/lib/referenceReader';
 
 type Connection = ReturnType<typeof createConnection>;
+
+const phpLanguageId = 'php';
 
 const addIntelephenseListeners = async (connection: Connection) => {
 	await Intelephense.initialise({
@@ -47,6 +55,40 @@ const addIntelephenseListeners = async (connection: Connection) => {
 	});
 
 	connection.onShutdown(Intelephense.shutdown);
+
+	const discoverSymbolsRequest = new RequestType<{ textDocument: TextDocumentItem }, number, void, void>('discoverSymbols');
+	connection.onRequest(discoverSymbolsRequest, async (params) => {
+		if (params.textDocument.text.length > 1024 * 1024) {
+			const msg = `${params.textDocument.uri} exceeds max file size.`;
+			Log.info(msg);
+			connection.console.warn(msg);
+			return undefined;
+		}
+		if (params.textDocument.languageId !== phpLanguageId ||
+			Intelephense.getApiTools().documentStore.has(params.textDocument.uri)
+		) {
+			return undefined;
+		}
+		// following differs from how intelephense was designed: it intentionally did not keep
+		// files that weren't opened directly in the stores, possibly for microoptimisation of RAM
+
+		let parsedDocument = new ParsedDocument(params.textDocument.uri, params.textDocument.text, params.textDocument.version);
+		Intelephense.getApiTools().documentStore.add(parsedDocument);
+		let symbolTable = SymbolTable.create(parsedDocument);
+		Intelephense.getApiTools().symbolStore.add(symbolTable);
+		let refTable = ReferenceReader.discoverReferences(parsedDocument, Intelephense.getApiTools().symbolStore);
+		Intelephense.getApiTools().refStore.add(refTable);
+	});
+
+	const forgetRequest = new RequestType<{ uri: string }, void, void, void>('forget');
+	connection.onRequest(forgetRequest, (params) => {
+		return Intelephense.forget(params.uri);
+	});
+
+	const knownDocumentsRequest = new RequestType<void, { timestamp: number, documents: string[] }, void, void>('knownDocuments');
+	connection.onRequest(knownDocumentsRequest, () => {
+		return Intelephense.knownDocuments();
+	});
 
 	connection.onCompletion(
 		(params: TextDocumentPositionParams): CompletionItem[] => {
