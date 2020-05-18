@@ -13,7 +13,6 @@ export const flattenTypes = (multiType: Type): Type[] => {
 
 export const getKey = (arrt: Type, keyType: Type): Type[] => {
     const keyNameOpt = keyType.kind === 'IStr' ? [keyType.content] : [];
-    const indexOpt = keyType.kind === 'IInt' ? [keyType.value] : [];
     return flattenTypes(arrt).flatMap(arrt => {
         const valueTypes: Type[] = [];
         if (keyNameOpt.length) {
@@ -25,10 +24,15 @@ export const getKey = (arrt: Type, keyType: Type): Type[] => {
                     e.keyType.content === keyName
                 ).map(e => e.valueType)
             );
-        } else if (arrt.kind === 'ITupleArr' && indexOpt.length) {
-            const index = indexOpt[0];
-            if (index >= 0 && index < arrt.elements.length) {
-                valueTypes.push(arrt.elements[index]);
+        } else if (arrt.kind === 'ITupleArr') {
+            const indexOpt = keyType.kind === 'IInt' ? [keyType.value] : [];
+            if (indexOpt.length) {
+                const index = indexOpt[0];
+                if (index >= 0 && index < arrt.elements.length) {
+                    valueTypes.push(arrt.elements[index]);
+                }
+            } else {
+                valueTypes.push(...arrt.elements);
             }
         } else if (arrt.kind === 'IListArr') {
             // variable, number or math expression used as a key

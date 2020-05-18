@@ -5,7 +5,7 @@ import { flattenTypes } from "deep-assoc-lang-server/src/helpers/Typing";
 
 /** @module - provides helper functions for making completion options from resolved type structure */
 
-const makeItem = (label: string, i: number) => {
+export const makeItem = (label: string, i: number) => {
     return {
         label: label,
         sortText: (i + '').padStart(7, '0'),

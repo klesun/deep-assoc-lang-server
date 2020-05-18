@@ -55,8 +55,7 @@ const ArrCtorRes = ({exprPsi, apiCtx}: {
                     ...asAssoc(elementPsis),
                     ...asTuple(elementPsis),
                 ];
-            })
-            .filter(arrt => Log.info({'arrt': arrt}));
+            });
 
     return resolveAsArrCtor(exprPsi);
 };

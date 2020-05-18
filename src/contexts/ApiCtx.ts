@@ -63,5 +63,6 @@ export default ApiCtx;
 export interface IApiCtx {
     getPsiAt: ({uri, position}: {uri: string, position: lsp.Position, flush?: boolean}) => Opt<IPsi>,
     decl: (ref: Reference) => IPsi[],
+    // TODO: Psi<Phrase>
     resolveExpr: (exprPsi: IPsi) => Type[],
 }

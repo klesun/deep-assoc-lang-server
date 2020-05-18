@@ -32,6 +32,14 @@ const DirectTypeResolver = ({exprPsi, apiCtx}: {
             ...FuncCallRes({exprPsi, apiCtx}),
             ...VarRes({exprPsi, apiCtx}),
             ...resolveAsAssocGet({exprPsi}),
+            ...exprPsi.asPhrase(PhraseType.EncapsulatedExpression)
+                .flatMap(encPsi => encPsi.children().slice(1, -1))
+                .filter(encValPsi => !encValPsi.asToken(TokenType.Whitespace).length)
+                .flatMap(apiCtx.resolveExpr),
+            ...exprPsi.asPhrase(PhraseType.CoalesceExpression)
+                .flatMap(encPsi => encPsi.children())
+                .flatMap(chd => chd.asPhrase())
+                .flatMap(apiCtx.resolveExpr),
             ...CheapTypeResolver({exprPsi}),
         ];
         if (!result.length) {

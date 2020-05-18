@@ -17,7 +17,10 @@ const getEndOffset = (psi: IPsi): number => {
     return endToken.offset + endToken.length;
 };
 
-/** provides completion options in `$arr['<>']` */
+/**
+ *                                      \/
+ * provides completion options in `$arr['']`
+ */
 const AssocGetPvdr = (params: {
     apiCtx: IApiCtx, psi: IPsi,
 }): CompletionItem[] => {

@@ -16,10 +16,10 @@ import Log from './Log';
 import AssocGetPvdr from './entry/AssocKeyPvdr';
 import ApiCtx from './contexts/ApiCtx';
 import ArrCtorKeyPvdr from 'deep-assoc-lang-server/src/entry/ArrCtorKeyPvdr';
-import { TextEdit } from 'vscode';
 import { ParsedDocument } from 'intelephense/lib/parsedDocument';
 import { SymbolTable } from 'intelephense/lib/symbolStore';
 import { ReferenceReader } from 'intelephense/lib/referenceReader';
+import StrValsPvdr from 'deep-assoc-lang-server/src/entry/StrValsPvdr';
 
 type Connection = ReturnType<typeof createConnection>;
 
@@ -101,6 +101,7 @@ const addIntelephenseListeners = async (connection: Connection) => {
 			}).flatMap(psi => [
 				...AssocGetPvdr({apiCtx, psi}),
 				...ArrCtorKeyPvdr({apiCtx, psi}),
+				...StrValsPvdr({apiCtx, psi}),
 			]);
 		}
 	);
