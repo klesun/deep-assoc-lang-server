@@ -3,7 +3,7 @@ import { IApiCtx } from "deep-assoc-lang-server/src/contexts/ApiCtx";
 import { IPsi } from "deep-assoc-lang-server/src/helpers/Psi";
 import Log from "deep-assoc-lang-server/src/Log";
 import { TokenType, PhraseType } from "php7parser";
-import { makeItem } from "deep-assoc-lang-server/src/helpers/UiAdapter";
+import * as lsp from 'vscode-languageserver-types';
 
 /**
  *                                              \/
@@ -23,7 +23,12 @@ const StrValsPvdr = (params: {
             .filter(operand => !operand.eq(psi))
             .flatMap(apiCtx.resolveExpr)
             .flatMap(type => type.kind !== 'IStr' ? [] : [type.content])
-            .map(makeItem);
+            .map((label, i) => ({
+                label: label,
+                sortText: (i + '').padStart(7, '0'),
+                detail: 'deep-assoc FTW',
+                kind: lsp.CompletionItemKind.Value,
+            }));
     };
 
     return getCompletions(params.psi);

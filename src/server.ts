@@ -20,6 +20,7 @@ import { ParsedDocument } from 'intelephense/lib/parsedDocument';
 import { SymbolTable } from 'intelephense/lib/symbolStore';
 import { ReferenceReader } from 'intelephense/lib/referenceReader';
 import StrValsPvdr from 'deep-assoc-lang-server/src/entry/StrValsPvdr';
+import CustomDocTagsPvdr from 'deep-assoc-lang-server/src/entry/CustomDocTagsPvdr';
 
 type Connection = ReturnType<typeof createConnection>;
 
@@ -102,6 +103,7 @@ const addIntelephenseListeners = async (connection: Connection) => {
 				...AssocGetPvdr({apiCtx, psi}),
 				...ArrCtorKeyPvdr({apiCtx, psi}),
 				...StrValsPvdr({apiCtx, psi}),
+				...CustomDocTagsPvdr({apiCtx, psi, position: params.position}),
 			]);
 		}
 	);
@@ -123,7 +125,7 @@ const main = () => {
 				textDocumentSync: TextDocumentSyncKind.Incremental,
 				// Tell the client that the server supports code completion
 				completionProvider: {
-					triggerCharacters: ['\'', '"', '['],
+					triggerCharacters: ['\'', '"', '[', '@'],
 				}
 			}
 		};
