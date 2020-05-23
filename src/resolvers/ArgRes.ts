@@ -4,10 +4,11 @@ import { Type } from "../structures/Type";
 import { PhraseType, TokenType } from "php7parser";
 import PsalmTypeExprParser from "../structures/psalm/PsalmTypeExprParser";
 import Log from "deep-assoc-lang-server/src/Log";
+const Debug = require('klesun-node-tools/src/Debug.js');
 
 /** removes stars */
 const getDocCommentText = (docCommentToken: string): Opt<string> => {
-    const match = docCommentToken.match(/^\/\*\**(?:\s*\n)(.*)\*\/$/s);
+    const match = docCommentToken.match(/^\/\*\**(?:\s*)(.*)\*\/$/s);
     if (!match) {
         return [];
     } else {
@@ -55,9 +56,9 @@ const ArgRes = ({psi, apiCtx}: {
             .flatMap(psi => psi.parent())
             .filter(par => par.node.phraseType === PhraseType.ParameterDeclarationList)
             .flatMap(psi => psi.parent())
-            .filter(par => par.node.phraseType === PhraseType.FunctionDeclarationHeader)
+            .filter(par => [PhraseType.FunctionDeclarationHeader, PhraseType.MethodDeclarationHeader].includes(par.node.phraseType))
             .flatMap(psi => psi.parent())
-            .filter(par => par.node.phraseType === PhraseType.FunctionDeclaration)
+            .filter(par => [PhraseType.FunctionDeclaration, PhraseType.MethodDeclaration].includes(par.node.phraseType))
             .flatMap(decl => decl.prevSibling(psi => !psi.asToken(TokenType.Whitespace).length))
             .flatMap(par => par.asToken(TokenType.DocumentComment))
             .flatMap(psi => getDocCommentText(psi.text()))
