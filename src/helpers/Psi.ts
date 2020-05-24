@@ -90,6 +90,23 @@ const Psi = <T extends Node>({traverser, node, doc}: {
         }
     };
 
+    const parent = (): Opt<Psi<Phrase>> => {
+        const newTraverser = traverser.clone();
+        newTraverser.parent();
+        if (newTraverser.node &&
+            newTraverser.node !== node &&
+            'phraseType' in newTraverser.node
+        ) {
+            return [Psi({
+                traverser: newTraverser,
+                node: newTraverser.node,
+                doc,
+            })];
+        } else {
+            return [];
+        }
+    };
+
     return {
         node: node,
         doc: doc,
@@ -106,18 +123,15 @@ const Psi = <T extends Node>({traverser, node, doc}: {
             }
         },
         asPhrase: asPhrase,
-        parent: () => {
-            const newTraverser = traverser.clone();
-            newTraverser.parent();
-            if (newTraverser.node && 'phraseType' in newTraverser.node) {
-                return [Psi({
-                    traverser: newTraverser,
-                    node: newTraverser.node,
-                    doc,
-                })];
-            } else {
-                return [];
+        parent: parent,
+        parents: () => {
+            const parents = [];
+            let parentOpt = parent();
+            while (parentOpt.length) {
+                parents.push(parentOpt[0]);
+                parentOpt = parentOpt[0].parent();
             }
+            return parents;
         },
         prevSibling: (pred?) => {
             pred = pred || (() => true);
@@ -177,6 +191,7 @@ interface Psi<T extends Node> {
     asToken: (tokenType?: TokenType) => Opt<Psi<Token>>,
     asPhrase: (...phraseTypes: PhraseType[]) => Opt<Psi<Phrase>>,
     parent: () => Opt<Psi<Phrase>>,
+    parents: () => Psi<Phrase>[],
     /**
      * @param pred - if supplied, will take previous
      *  siblings till this predicate yields true

@@ -1,4 +1,4 @@
-import Psi, { Opt } from "deep-assoc-lang-server/src/helpers/Psi";
+import Psi, { Opt, IPsi } from "deep-assoc-lang-server/src/helpers/Psi";
 import { Phrase, PhraseType, TokenType } from "php7parser";
 import { Type } from "deep-assoc-lang-server/src/structures/Type";
 import PsalmTypeExprParser from "deep-assoc-lang-server/src/structures/psalm/PsalmTypeExprParser";
@@ -42,6 +42,36 @@ const getRawTags = (docText: string) => {
     return tags;
 };
 
+const collectTypeAliases = (funcDeclPsi: IPsi): Record<string, Type> => {
+    const nameToType: Record<string, Type> = {};
+    const aliases = funcDeclPsi.parents().slice(-1)
+        .filter(root => root.node.phraseType === PhraseType.StatementList)
+        .flatMap(root => root.children())
+        .flatMap(chd => chd.asToken(TokenType.DocumentComment))
+        .flatMap(psi => getDocCommentText(psi.text()))
+        .flatMap(getRawTags)
+        .filter(docTag => docTag.tagName === 'psalm-type')
+        .flatMap(docTag => {
+            Log.info('zhopa doc tag - ' + docTag.textLeft);
+            const match = docTag.textLeft.match(/^\s*(\w+)\s*=(.*)/s);
+            if (!match) {
+                return [];
+            }
+            const [, name, typeStr] = match;
+            Log.info({'zhopa name, typeStr - ': {name, typeStr}});
+            return PsalmTypeExprParser(typeStr)
+                .map(parsed => ({
+                    name: name,
+                    type: parsed.type,
+                    textLeft: parsed.textLeft,
+                }));
+        });
+    for (const {name, type} of aliases) {
+        nameToType[name] = type;
+    }
+    return nameToType;
+};
+
 /**
  * note, returned types may be an IMt instance,
  * so you better call flattenTypes() right afterwards
@@ -55,16 +85,37 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
     params: Record<string, Type>,
     returnType: Opt<Type>,
 }> => {
+    // TODO: cache per file eventually
+    const nameToType = collectTypeAliases(funcDeclPsi);
+
+    /** add type info from local and imported aliases */
+    const addContext = (type: Type): Type => {
+        if (type.kind === 'IFqn' && !type.fqn.includes('\\')) {
+            return nameToType[type.fqn] || type;
+        // TODO: add lists, assocs, etc...
+        } else {
+            return type;
+        }
+    };
+
     if (![PhraseType.FunctionDeclaration, PhraseType.MethodDeclaration].includes(funcDeclPsi.node.phraseType)) {
         return [];
     }
+    Log.info('shluha funcDeclPsi - ' + funcDeclPsi);
     const typedTags = funcDeclPsi
         .prevSibling(psi => !psi.asToken(TokenType.Whitespace).length)
+        .filter(arg => Log.info('shluha prev sibling - ' + arg))
         .flatMap(par => par.asToken(TokenType.DocumentComment))
+        .filter(arg => Log.info('shluha doc psi text - ' + arg.text()))
         .flatMap(psi => getDocCommentText(psi.text()))
+        .filter(arg => Log.info('shluha doc text - ' + arg))
         .flatMap(getRawTags)
         .flatMap(rawTag => PsalmTypeExprParser(rawTag.textLeft)
-            .map(parsed => ({...rawTag, ...parsed})));
+            .map(parsed => ({
+                tagName: rawTag.tagName,
+                type: addContext(parsed.type),
+                textLeft: parsed.textLeft,
+            })));
 
     const params: Record<string, Type> = {};
     let returnType: Opt<Type> = [];
@@ -77,6 +128,8 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
             returnType = [typedTag.type];
         }
     }
+
+    Log.info({'ololo params': params, typedTags});
 
     return [{params, returnType}];
 };
