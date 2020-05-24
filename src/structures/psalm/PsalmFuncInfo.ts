@@ -3,6 +3,7 @@ import { Phrase, PhraseType, TokenType } from "php7parser";
 import { Type } from "deep-assoc-lang-server/src/structures/Type";
 import PsalmTypeExprParser from "deep-assoc-lang-server/src/structures/psalm/PsalmTypeExprParser";
 import Log from "deep-assoc-lang-server/src/Log";
+import { CodeActionKind } from "vscode";
 
 /** removes stars */
 const getDocCommentText = (docCommentToken: string): Opt<string> => {
@@ -120,7 +121,14 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
                     valueType: addContext(e.valueType),
                 })),
             };
-        // TODO: add IMt, ITupleArr, etc...
+        } else if (type.kind === 'IMt') {
+            return {kind: 'IMt',
+                types: type.types.map(addContext),
+            };
+        } else if (type.kind === 'ITupleArr') {
+            return {kind: 'ITupleArr',
+                elements: type.elements.map(addContext),
+            };
         } else {
             return type;
         }
