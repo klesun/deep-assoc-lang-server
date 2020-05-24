@@ -2,55 +2,19 @@ import { IPsi, Opt } from "../helpers/Psi";
 import { IApiCtx } from "../contexts/ApiCtx";
 import { Type } from "../structures/Type";
 import { PhraseType, TokenType } from "php7parser";
-import PsalmTypeExprParser from "../structures/psalm/PsalmTypeExprParser";
 import Log from "deep-assoc-lang-server/src/Log";
-const Debug = require('klesun-node-tools/src/Debug.js');
-
-/** removes stars */
-const getDocCommentText = (docCommentToken: string): Opt<string> => {
-    const match = docCommentToken.match(/^\/\*\**(?:\s*)(.*)\*\/$/s);
-    if (!match) {
-        return [];
-    } else {
-        const clean = match[1].split('\n')
-            .map(l => l.replace(/^\s*\*\s?/, ''))
-            .join('\n');
-        return [clean];
-    }
-};
-
-interface RawDocTag {
-    tagName: string;
-    textLeft: string;
-}
-
-const getRawTags = (docText: string) => {
-    const tags = [];
-    let current: Opt<RawDocTag> = [];
-    for (const line of docText.split('\n')) {
-        const match = line.match(/^\s*@([\w\-]+)\s*(.*)/);
-        if (match) {
-            const [, tagName, textLeft] = match;
-            tags.push(...current);
-            current = [{tagName, textLeft}];
-        } else if (current.length) {
-            current = [{
-                tagName: current[0].tagName,
-                textLeft: current[0].textLeft + '\n' + line,
-            }];
-        }
-    }
-    tags.push(...current);
-    return tags;
-};
+import PsalmFuncInfo from "deep-assoc-lang-server/src/structures/psalm/PsalmFuncInfo";
 
 const ArgRes = ({psi, apiCtx}: {
     psi: IPsi, apiCtx: IApiCtx,
 }): Type[] => {
     const resolveArg = (psi: IPsi) => {
-        const argNameOpt = psi.children()
+        const argName = psi.children()
             .flatMap(psi => psi.asToken(TokenType.VariableName))
-            .map(psi => psi.text().slice(1));
+            .map(psi => psi.text().slice(1))[0] || null;
+        if (!argName) {
+            return [];
+        }
 
         return psi.asPhrase(PhraseType.ParameterDeclaration)
             .flatMap(psi => psi.parent())
@@ -58,19 +22,11 @@ const ArgRes = ({psi, apiCtx}: {
             .flatMap(psi => psi.parent())
             .filter(par => [PhraseType.FunctionDeclarationHeader, PhraseType.MethodDeclarationHeader].includes(par.node.phraseType))
             .flatMap(psi => psi.parent())
-            .filter(par => [PhraseType.FunctionDeclaration, PhraseType.MethodDeclaration].includes(par.node.phraseType))
-            .flatMap(decl => decl.prevSibling(psi => !psi.asToken(TokenType.Whitespace).length))
-            .flatMap(par => par.asToken(TokenType.DocumentComment))
-            .flatMap(psi => getDocCommentText(psi.text()))
-            .flatMap(getRawTags)
-            .filter(rawTag => ['param', 'psalm-param'].includes(rawTag.tagName))
-            .flatMap(rawTag => PsalmTypeExprParser(rawTag.textLeft))
-            .filter(parsed => argNameOpt.every(argName => {
-                const tagArgName = parsed.textLeft.trim()
-                    .replace(/^\$(\w+).*/s, '$1');
-                return tagArgName === argName;
-            }))
-            .map(parsed => parsed.type);
+            .flatMap(funcDeclPsi => PsalmFuncInfo({funcDeclPsi}))
+            .flatMap(funcInfo => {
+                const argType = funcInfo.params[argName] || null;
+                return !argType ? [] : [argType];
+            });
     };
 
     return resolveArg(psi);
