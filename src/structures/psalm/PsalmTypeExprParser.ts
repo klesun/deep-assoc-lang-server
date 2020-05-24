@@ -173,6 +173,14 @@ const PsalmTypeExprParser = (text: string) => {
                 };
                 parsed = [normalizeFqnType(type)];
             }
+        } else if (match = unprefix(/([a-zA-Z\\_][a-zA-Z\\_0-9]*)\s*((?:\[\])+)\s*/)) {
+            // traditional phpdoc format for array of type
+            const [, fqn, bracketsStr] = match;
+            let wrappedType: Type = {kind: 'IFqn', fqn, generics: []};
+            for (let i = 0; i < bracketsStr.length / 2; ++i) {
+                wrappedType = {kind: 'IListArr', valueType: wrappedType};
+            }
+            parsed = [wrappedType];
         } else if (unprefix(/array\s*\{\s*/)) {
             parsed = parseAssocKeys();
         } else if (match = unprefix(/([a-zA-Z\\_][a-zA-Z\\_0-9]*)\s*/)) {
