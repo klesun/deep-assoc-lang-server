@@ -35,3 +35,15 @@ export const makeArrKeyCompletionItems = (arrt: Type): CompletionItem[] => {
         return [];
     }
 };
+
+export const removeDupes = (items: CompletionItem[]) => {
+    const occurences = new Set<string>();
+    return items.filter(item => {
+        if (occurences.has(item.label)) {
+            return false;
+        } else {
+            occurences.add(item.label);
+            return true;
+        }
+    });
+};

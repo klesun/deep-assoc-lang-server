@@ -5,7 +5,7 @@ import Log from "deep-assoc-lang-server/src/Log";
 import { TokenType, PhraseType, Phrase } from "php7parser";
 import { assertFuncRef } from "deep-assoc-lang-server/src/resolvers/FuncCallRes";
 import { Type } from "deep-assoc-lang-server/src/structures/Type";
-import { makeArrKeyCompletionItems } from "deep-assoc-lang-server/src/helpers/UiAdapter";
+import { makeArrKeyCompletionItems, removeDupes } from "deep-assoc-lang-server/src/helpers/UiAdapter";
 import ArgRes from "deep-assoc-lang-server/src/resolvers/ArgRes";
 
 /** provides completion options in `doStuff(['<>' => 123])` */
@@ -62,9 +62,10 @@ const ArrCtorKeyPvdr = ({psi, apiCtx}: {
     };
 
     const getCompletions = (psi: IPsi): CompletionItem[] => {
-        return getArrCtor(psi)
+        const items = getArrCtor(psi)
             .flatMap(resolveArrCtor)
             .flatMap(makeArrKeyCompletionItems);
+        return removeDupes(items);
     };
 
     return getCompletions(psi);

@@ -5,7 +5,7 @@ import { Token, Phrase, PhraseType, LexerMode } from 'php7parser';
 import { TokenType } from 'php7parser';
 import Psi, { Opt, IPsi, flattenTokens } from "../helpers/Psi";
 import { IApiCtx } from "../contexts/ApiCtx";
-import { makeArrKeyCompletionItems } from "deep-assoc-lang-server/src/helpers/UiAdapter";
+import { makeArrKeyCompletionItems, removeDupes } from "deep-assoc-lang-server/src/helpers/UiAdapter";
 
 const getStartOffset = (psi: IPsi): number => {
     return flattenTokens(psi.node)[0].offset;
@@ -65,13 +65,14 @@ const AssocGetPvdr = (params: {
             return [];
         }
         const {exprPsi, isQuoted} = qualOpt[0];
-        return apiCtx.resolveExpr(exprPsi)
+        const items = apiCtx.resolveExpr(exprPsi)
             .flatMap(makeArrKeyCompletionItems)
             .map(item => ({...item,
                 label: isQuoted || item.label.match(/^\d+$/)
                     ? item.label
                     : '\'' + item.label + '\'',
                 }));
+        return removeDupes(items);
     };
 
     return getCompletions(params.psi);

@@ -4,6 +4,7 @@ import { IPsi } from "deep-assoc-lang-server/src/helpers/Psi";
 import Log from "deep-assoc-lang-server/src/Log";
 import { TokenType, PhraseType } from "php7parser";
 import * as lsp from 'vscode-languageserver-types';
+import { removeDupes } from "deep-assoc-lang-server/src/helpers/UiAdapter";
 
 /**
  *                                              \/
@@ -15,7 +16,7 @@ const StrValsPvdr = (params: {
     const {apiCtx} = params;
 
     const getCompletions = (psi: IPsi): CompletionItem[] => {
-        return psi.asToken(TokenType.StringLiteral)
+        const items = psi.asToken(TokenType.StringLiteral)
             .flatMap(lit => lit.parent())
             .filter(par => par.node.phraseType === PhraseType.EqualityExpression)
             .flatMap(par => par.children())
@@ -29,6 +30,7 @@ const StrValsPvdr = (params: {
                 detail: 'deep-assoc FTW',
                 kind: lsp.CompletionItemKind.Value,
             }));
+        return removeDupes(items);
     };
 
     return getCompletions(params.psi);
