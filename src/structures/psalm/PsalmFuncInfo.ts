@@ -52,13 +52,11 @@ const collectTypeAliases = (funcDeclPsi: IPsi): Record<string, Type> => {
         .flatMap(getRawTags)
         .filter(docTag => docTag.tagName === 'psalm-type')
         .flatMap(docTag => {
-            Log.info('zhopa doc tag - ' + docTag.textLeft);
             const match = docTag.textLeft.match(/^\s*(\w+)\s*=(.*)/s);
             if (!match) {
                 return [];
             }
             const [, name, typeStr] = match;
-            Log.info({'zhopa name, typeStr - ': {name, typeStr}});
             return PsalmTypeExprParser(typeStr)
                 .map(parsed => ({
                     name: name,
@@ -112,9 +110,7 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
         return [];
     }
     const typedTags = getMethDoc(funcDeclPsi)
-        .filter(arg => Log.info('shluha doc psi text - ' + arg.text()))
         .flatMap(psi => getDocCommentText(psi.text()))
-        .filter(arg => Log.info('shluha doc text - ' + arg))
         .flatMap(getRawTags)
         .flatMap(rawTag => PsalmTypeExprParser(rawTag.textLeft)
             .map(parsed => ({
@@ -134,8 +130,6 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
             returnType = [typedTag.type];
         }
     }
-
-    Log.info({'ololo params': params, typedTags});
 
     return [{params, returnType}];
 };
