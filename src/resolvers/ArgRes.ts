@@ -4,6 +4,7 @@ import { Type } from "../structures/Type";
 import { PhraseType, TokenType } from "php7parser";
 import Log from "deep-assoc-lang-server/src/Log";
 import PsalmFuncInfo from "deep-assoc-lang-server/src/structures/psalm/PsalmFuncInfo";
+import { flattenTypes } from "deep-assoc-lang-server/src/helpers/Typing";
 
 const ArgRes = ({psi, apiCtx}: {
     psi: IPsi, apiCtx: IApiCtx,
@@ -26,7 +27,8 @@ const ArgRes = ({psi, apiCtx}: {
             .flatMap(funcInfo => {
                 const argType = funcInfo.params[argName] || null;
                 return !argType ? [] : [argType];
-            });
+            })
+            .flatMap(flattenTypes);
     };
 
     return resolveArg(psi);

@@ -2,6 +2,7 @@ import Psi, { Opt } from "deep-assoc-lang-server/src/helpers/Psi";
 import { Phrase, PhraseType, TokenType } from "php7parser";
 import { Type } from "deep-assoc-lang-server/src/structures/Type";
 import PsalmTypeExprParser from "deep-assoc-lang-server/src/structures/psalm/PsalmTypeExprParser";
+import Log from "deep-assoc-lang-server/src/Log";
 
 /** removes stars */
 const getDocCommentText = (docCommentToken: string): Opt<string> => {
@@ -41,6 +42,13 @@ const getRawTags = (docText: string) => {
     return tags;
 };
 
+/**
+ * note, returned types may be an IMt instance,
+ * so you better call flattenTypes() right afterwards
+ *
+ * did not want putting flattening here, because there could
+ * probably be other kinds of complex types than A|B, like A&B
+ */
 const PsalmFuncInfo = ({funcDeclPsi}: {
     funcDeclPsi: Psi<Phrase>,
 }): Opt<{
