@@ -98,9 +98,29 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
 
     /** add type info from local and imported aliases */
     const addContext = (type: Type): Type => {
+
+        // probably need to add a circular references check...
+
         if (type.kind === 'IFqn' && !type.fqn.includes('\\')) {
+            // possibly need to apply addContext here as well...
             return nameToType[type.fqn] || type;
-        // TODO: add lists, assocs, etc...
+        } else if (type.kind === 'IListArr') {
+            return {kind: 'IListArr',
+                valueType: addContext(type.valueType),
+            };
+        } else if (type.kind === 'IMapArr') {
+            return {kind: 'IMapArr',
+                keyType: addContext(type.keyType),
+                valueType: addContext(type.valueType),
+            };
+        } else if (type.kind === 'IRecordArr') {
+            return {kind: 'IRecordArr',
+                entries: type.entries.map(e => ({
+                    keyType: addContext(e.keyType),
+                    valueType: addContext(e.valueType),
+                })),
+            };
+        // TODO: add IMt, ITupleArr, etc...
         } else {
             return type;
         }
