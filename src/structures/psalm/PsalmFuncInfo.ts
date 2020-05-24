@@ -72,6 +72,16 @@ const collectTypeAliases = (funcDeclPsi: IPsi): Record<string, Type> => {
     return nameToType;
 };
 
+const getMethDoc = (funcDeclPsi: Psi<Phrase>) => {
+    let prevPsi: IPsi[] = funcDeclPsi.prevSibling(psi => !psi.asToken(TokenType.Whitespace).length);
+    if (!prevPsi.length) {
+        prevPsi = funcDeclPsi.parent()
+            .filter(par => par.node.phraseType === PhraseType.ClassMemberDeclarationList)
+            .flatMap(declList => declList.prevSibling(psi => !psi.asToken(TokenType.Whitespace).length));
+    }
+    return prevPsi.flatMap(par => par.asToken(TokenType.DocumentComment));
+};
+
 /**
  * note, returned types may be an IMt instance,
  * so you better call flattenTypes() right afterwards
@@ -101,11 +111,7 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
     if (![PhraseType.FunctionDeclaration, PhraseType.MethodDeclaration].includes(funcDeclPsi.node.phraseType)) {
         return [];
     }
-    Log.info('shluha funcDeclPsi - ' + funcDeclPsi);
-    const typedTags = funcDeclPsi
-        .prevSibling(psi => !psi.asToken(TokenType.Whitespace).length)
-        .filter(arg => Log.info('shluha prev sibling - ' + arg))
-        .flatMap(par => par.asToken(TokenType.DocumentComment))
+    const typedTags = getMethDoc(funcDeclPsi)
         .filter(arg => Log.info('shluha doc psi text - ' + arg.text()))
         .flatMap(psi => getDocCommentText(psi.text()))
         .filter(arg => Log.info('shluha doc text - ' + arg))
