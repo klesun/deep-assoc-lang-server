@@ -99,39 +99,50 @@ const PsalmFuncInfo = ({funcDeclPsi}: {
 
     /** add type info from local and imported aliases */
     const addContext = (type: Type): Type => {
-
-        // probably need to add a circular references check...
-
-        if (type.kind === 'IFqn' && !type.fqn.includes('\\')) {
-            // possibly need to apply addContext here as well...
-            return nameToType[type.fqn] || type;
-        } else if (type.kind === 'IListArr') {
-            return {kind: 'IListArr',
-                valueType: addContext(type.valueType),
-            };
-        } else if (type.kind === 'IMapArr') {
-            return {kind: 'IMapArr',
-                keyType: addContext(type.keyType),
-                valueType: addContext(type.valueType),
-            };
-        } else if (type.kind === 'IRecordArr') {
-            return {kind: 'IRecordArr',
-                entries: type.entries.map(e => ({
-                    keyType: addContext(e.keyType),
-                    valueType: addContext(e.valueType),
-                })),
-            };
-        } else if (type.kind === 'IMt') {
-            return {kind: 'IMt',
-                types: type.types.map(addContext),
-            };
-        } else if (type.kind === 'ITupleArr') {
-            return {kind: 'ITupleArr',
-                elements: type.elements.map(addContext),
-            };
-        } else {
-            return type;
-        }
+        const nameOccurences = new Set();
+        const addContext = (type: Type): Type => {
+            if (type.kind === 'IFqn' && !type.fqn.includes('\\')) {
+                const aliasType = nameToType[type.fqn] || null;
+                if (!aliasType) {
+                    return type;
+                } else if (nameOccurences.has(type.fqn)) {
+                    // circular reference - don't add context further
+                    return aliasType;
+                } else {
+                    nameOccurences.add(type.fqn);
+                    const withContext = addContext(aliasType);
+                    nameOccurences.delete(type.fqn);
+                    return withContext;
+                }
+            } else if (type.kind === 'IListArr') {
+                return {kind: 'IListArr',
+                    valueType: addContext(type.valueType),
+                };
+            } else if (type.kind === 'IMapArr') {
+                return {kind: 'IMapArr',
+                    keyType: addContext(type.keyType),
+                    valueType: addContext(type.valueType),
+                };
+            } else if (type.kind === 'IRecordArr') {
+                return {kind: 'IRecordArr',
+                    entries: type.entries.map(e => ({
+                        keyType: addContext(e.keyType),
+                        valueType: addContext(e.valueType),
+                    })),
+                };
+            } else if (type.kind === 'IMt') {
+                return {kind: 'IMt',
+                    types: type.types.map(addContext),
+                };
+            } else if (type.kind === 'ITupleArr') {
+                return {kind: 'ITupleArr',
+                    elements: type.elements.map(addContext),
+                };
+            } else {
+                return type;
+            }
+        };
+        return addContext(type);
     };
 
     if (![PhraseType.FunctionDeclaration, PhraseType.MethodDeclaration].includes(funcDeclPsi.node.phraseType)) {
