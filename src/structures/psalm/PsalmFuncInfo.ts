@@ -4,6 +4,7 @@ import { Type } from "deep-assoc-lang-server/src/structures/Type";
 import PsalmTypeExprParser from "deep-assoc-lang-server/src/structures/psalm/PsalmTypeExprParser";
 import Log from "deep-assoc-lang-server/src/Log";
 import { CodeActionKind } from "vscode";
+import { IApiCtx } from "deep-assoc-lang-server/src/contexts/ApiCtx";
 
 /** removes stars */
 const getDocCommentText = (docCommentToken: string): Opt<string> => {
@@ -23,7 +24,7 @@ interface RawDocTag {
     textLeft: string;
 }
 
-const getRawTags = (docText: string) => {
+const getRawTags = (docText: string): RawDocTag[] => {
     const tags = [];
     let current: Opt<RawDocTag> = [];
     for (const line of docText.split('\n')) {
@@ -43,16 +44,9 @@ const getRawTags = (docText: string) => {
     return tags;
 };
 
-const collectTypeAliases = (funcDeclPsi: IPsi): Record<string, Type> => {
-    const nameToType: Record<string, Type> = {};
-    const aliases = funcDeclPsi.parents().slice(-1)
-        .filter(root => root.node.phraseType === PhraseType.StatementList)
-        .flatMap(root => root.children())
-        .flatMap(chd => chd.asToken(TokenType.DocumentComment))
-        .flatMap(psi => getDocCommentText(psi.text()))
-        .flatMap(getRawTags)
-        .filter(docTag => docTag.tagName === 'psalm-type')
-        .flatMap(docTag => {
+const collectTypeAliases = (funcDeclPsi: IPsi, apiCtx: IApiCtx): Record<string, Type> => {
+    const assertPsalmTypeDoc = (docTag: RawDocTag) => {
+        if (docTag.tagName === 'psalm-type') {
             const match = docTag.textLeft.match(/^\s*(\w+)\s*=(.*)/s);
             if (!match) {
                 return [];
@@ -64,7 +58,40 @@ const collectTypeAliases = (funcDeclPsi: IPsi): Record<string, Type> => {
                     type: parsed.type,
                     textLeft: parsed.textLeft,
                 }));
-        });
+        } else {
+            return [];
+        }
+    };
+
+    const assertPsalmImportTypeDoc = (docTag: RawDocTag) => {
+        if (docTag.tagName === 'psalm-import-type') {
+            const match = docTag.textLeft.match(/^\s*(\w+)\s+from\s+([a-zA-Z\\_][a-zA-Z\\_0-9]*)/);
+            if (!match) {
+                return [];
+            }
+            const [, name, path] = match;
+            // TODO: circular references
+            return apiCtx.declByFqn(path).flatMap(classPsi => {
+                const nameToType = collectTypeAliases(classPsi, apiCtx);
+                const type = nameToType[name] || null;
+                return !type ? [] : [{name, type}];
+            })
+        } else {
+            return [];
+        }
+    };
+
+    const nameToType: Record<string, Type> = {};
+    const aliases = funcDeclPsi.parents().slice(-1)
+        .filter(root => root.node.phraseType === PhraseType.StatementList)
+        .flatMap(root => root.children())
+        .flatMap(chd => chd.asToken(TokenType.DocumentComment))
+        .flatMap(psi => getDocCommentText(psi.text()))
+        .flatMap(getRawTags)
+        .flatMap(docTag => [
+            ...assertPsalmTypeDoc(docTag),
+            ...assertPsalmImportTypeDoc(docTag),
+        ]);
     for (const {name, type} of aliases) {
         nameToType[name] = type;
     }
@@ -88,14 +115,15 @@ const getMethDoc = (funcDeclPsi: Psi<Phrase>) => {
  * did not want putting flattening here, because there could
  * probably be other kinds of complex types than A|B, like A&B
  */
-const PsalmFuncInfo = ({funcDeclPsi}: {
+const PsalmFuncInfo = ({funcDeclPsi, apiCtx}: {
     funcDeclPsi: Psi<Phrase>,
+    apiCtx: IApiCtx,
 }): Opt<{
     params: Record<string, Type>,
     returnType: Opt<Type>,
 }> => {
     // TODO: cache per file eventually
-    const nameToType = collectTypeAliases(funcDeclPsi);
+    const nameToType = collectTypeAliases(funcDeclPsi, apiCtx);
 
     /** add type info from local and imported aliases */
     const addContext = (type: Type): Type => {

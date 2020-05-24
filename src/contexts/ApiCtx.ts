@@ -7,6 +7,8 @@ import { ParseTreeTraverser } from "intelephense/lib/parseTreeTraverser";
 import DirectTypeResolver from "../resolvers/DirectTypeResolver";
 import { Type } from "../structures/Type";
 import Log from "deep-assoc-lang-server/src/Log";
+import { Phrase } from "php7parser";
+import { PhpSymbol } from "intelephense/lib/symbol";
 
 const ApiCtx = ({apiTools}: {
     apiTools: ReturnType<typeof Intelephense.getApiTools>,
@@ -35,15 +37,23 @@ const ApiCtx = ({apiTools}: {
         }
     };
 
+    const declBySym = (sym: PhpSymbol) => opt(
+        apiTools.symbolStore.symbolLocation(sym)
+    ).flatMap(loc => {
+        return getPsiAt({uri: loc.uri, position: loc.range.end});
+    });
+
     const inProgress = new Set();
 
     let self: IApiCtx;
     return self = {
         getPsiAt: getPsiAt,
+        declByFqn: (fqn: string) => apiTools
+            .symbolStore.find(fqn.replace(/^\\/, ''))
+            .flatMap(declBySym),
         decl: (ref: Reference) => apiTools.symbolStore
             .findSymbolsByReference(ref, MemberMergeStrategy.None)
-            .flatMap(sym => opt(apiTools.symbolStore.symbolLocation(sym)))
-            .flatMap(loc => getPsiAt({uri: loc.uri, position: loc.range.end})),
+            .flatMap(declBySym),
         resolveExpr: (exprPsi: IPsi) => {
             if (inProgress.has(exprPsi.node)) {
                 return []; // cyclic reference
@@ -62,6 +72,7 @@ export default ApiCtx;
 
 export interface IApiCtx {
     getPsiAt: ({uri, position}: {uri: string, position: lsp.Position, flush?: boolean}) => Opt<IPsi>,
+    declByFqn: (fqn: string) => IPsi[],
     decl: (ref: Reference) => IPsi[],
     // TODO: Psi<Phrase>
     resolveExpr: (exprPsi: IPsi) => Type[],

@@ -23,7 +23,7 @@ const ArgRes = ({psi, apiCtx}: {
             .flatMap(psi => psi.parent())
             .filter(par => [PhraseType.FunctionDeclarationHeader, PhraseType.MethodDeclarationHeader].includes(par.node.phraseType))
             .flatMap(psi => psi.parent())
-            .flatMap(funcDeclPsi => PsalmFuncInfo({funcDeclPsi}))
+            .flatMap(funcDeclPsi => PsalmFuncInfo({funcDeclPsi, apiCtx}))
             .flatMap(funcInfo => {
                 const argType = funcInfo.params[argName] || null;
                 return !argType ? [] : [argType];

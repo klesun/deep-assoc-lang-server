@@ -41,7 +41,7 @@ const FuncCallRes = ({exprPsi, apiCtx}: {
     const resolveFromDoc = (braceOwner: Psi<Phrase>): Type[] => {
         return braceOwner.parent()
             .flatMap(par => par.node.phraseType === PhraseType.MethodDeclarationBody ? par.parent() : [par])
-            .flatMap(funcDeclPsi => PsalmFuncInfo({funcDeclPsi}))
+            .flatMap(funcDeclPsi => PsalmFuncInfo({funcDeclPsi, apiCtx}))
             .flatMap(funcInfo => funcInfo.returnType)
             .flatMap(flattenTypes);
     };
