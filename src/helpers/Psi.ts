@@ -92,9 +92,8 @@ const Psi = <T extends Node>({traverser, node, doc}: {
 
     const parent = (): Opt<Psi<Phrase>> => {
         const newTraverser = traverser.clone();
-        newTraverser.parent();
-        if (newTraverser.node &&
-            newTraverser.node !== node &&
+        const parentNode = newTraverser.parent();
+        if (parentNode &&
             'phraseType' in newTraverser.node
         ) {
             return [Psi({
@@ -139,8 +138,8 @@ const Psi = <T extends Node>({traverser, node, doc}: {
             const newTraverser = traverser.clone();
             let prevPsi: IPsi;
             do {
-                newTraverser.prevSibling();
-                if (!newTraverser.node) {
+                const prevNode = newTraverser.prevSibling();
+                if (!prevNode) {
                     return [];
                 }
                 prevPsi = Psi({
@@ -158,8 +157,8 @@ const Psi = <T extends Node>({traverser, node, doc}: {
             const newTraverser = traverser.clone();
             let prevPsi: IPsi;
             do {
-                newTraverser.nextSibling();
-                if (!newTraverser.node) {
+                const nextNode = newTraverser.nextSibling();
+                if (!nextNode) {
                     return [];
                 }
                 prevPsi = Psi({
