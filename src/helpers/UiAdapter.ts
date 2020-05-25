@@ -2,6 +2,7 @@ import { CompletionItem } from "vscode-languageserver";
 import { Type } from "deep-assoc-lang-server/src/structures/Type";
 import * as lsp from 'vscode-languageserver-types';
 import { flattenTypes } from "deep-assoc-lang-server/src/helpers/Typing";
+import Log from "deep-assoc-lang-server/src/Log";
 
 /** @module - provides helper functions for making completion options from resolved type structure */
 
@@ -23,6 +24,12 @@ export const makeArrKeyCompletionItems = (arrt: Type): CompletionItem[] => {
     } else if (arrt.kind === 'IListArr') {
         const items: CompletionItem[] = [];
         for (let i = 0; i < 5; ++i) {
+            items.push(makeItem(i + '', i));
+        }
+        return items;
+    } else if (arrt.kind === 'ITupleArr') {
+        const items: CompletionItem[] = [];
+        for (let i = 0; i < arrt.elements.length; ++i) {
             items.push(makeItem(i + '', i));
         }
         return items;

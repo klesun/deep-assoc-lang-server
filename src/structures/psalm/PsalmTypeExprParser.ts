@@ -21,6 +21,25 @@ const normalizeFqnType = (fqnType: IFqn): Type => {
     return fqnType;
 };
 
+const normalizeRecType = (rect: IRecordArr): Type => {
+    let keysOrdered = true;
+    for (let i = 0; i < rect.entries.length; ++i) {
+        const kt = rect.entries[i].keyType;
+        const asStr = kt.kind === 'IStr' ? [kt.content] : [];
+        if (!asStr.length || (i + '') !== asStr[0]) {
+            keysOrdered = false;
+        }
+    }
+    if (rect.entries.length && keysOrdered) {
+        return {kind: 'ITupleArr',
+            elements: rect.entries
+                .map(e => e.valueType),
+        };
+    } else {
+        return rect;
+    }
+};
+
 /**
  * @see https://github.com/klesun/deep-assoc-completion/blob/master/src/org/klesun/deep_assoc_completion/structures/psalm/PsalmTypeExprParser.java
  *
@@ -124,7 +143,7 @@ const PsalmTypeExprParser = (text: string) => {
         return closed;
     };
 
-    const parseAssocKeys = (): Opt<IRecordArr> => {
+    const parseAssocKeys = (): IRecordArr => {
         const entries: IRecordEntry[] = [];
         const keyToComments: Record<string, string[]> = {};
 
@@ -150,10 +169,10 @@ const PsalmTypeExprParser = (text: string) => {
         }
         unprefix(/,\s*/); // optional trailing coma
         if (unprefix(/\s*}\s*/)) {
-            return [{kind: 'IRecordArr', entries}];
+            return {kind: 'IRecordArr', entries};
         } else {
             const unparsed = skipTillClosed('{', '}');
-            return [{kind: 'IRecordArr', entries, unparsed}];
+            return {kind: 'IRecordArr', entries, unparsed};
         }
     };
 
@@ -182,7 +201,8 @@ const PsalmTypeExprParser = (text: string) => {
             }
             parsed = [wrappedType];
         } else if (unprefix(/array\s*\{\s*/)) {
-            parsed = parseAssocKeys();
+            const rect = parseAssocKeys();
+            parsed = [normalizeRecType(rect)];
         } else if (match = unprefix(/([a-zA-Z\\_][a-zA-Z\\_0-9]*)\s*/)) {
             // should be put after SomeClass::class check when it is implemented
             const [, fqn] = match;

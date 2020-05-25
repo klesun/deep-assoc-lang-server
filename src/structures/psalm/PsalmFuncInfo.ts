@@ -70,7 +70,7 @@ const collectTypeAliases = (funcDeclPsi: IPsi, apiCtx: IApiCtx): Record<string, 
                 return [];
             }
             const [, name, path] = match;
-            // TODO: circular references
+            // TODO: add circular references safeguard
             return apiCtx.declByFqn(path).flatMap(classPsi => {
                 const nameToType = collectTypeAliases(classPsi, apiCtx);
                 const type = nameToType[name] || null;
