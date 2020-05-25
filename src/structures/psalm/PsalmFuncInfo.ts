@@ -1,4 +1,4 @@
-import Psi, { Opt, IPsi } from "deep-assoc-lang-server/src/helpers/Psi";
+import Psi, { Opt, IPsi, Node } from "deep-assoc-lang-server/src/helpers/Psi";
 import { Phrase, PhraseType, TokenType } from "php7parser";
 import { Type } from "deep-assoc-lang-server/src/structures/Type";
 import PsalmTypeExprParser from "deep-assoc-lang-server/src/structures/psalm/PsalmTypeExprParser";
@@ -44,58 +44,68 @@ const getRawTags = (docText: string): RawDocTag[] => {
     return tags;
 };
 
-const collectTypeAliases = (funcDeclPsi: IPsi, apiCtx: IApiCtx): Record<string, Type> => {
-    const assertPsalmTypeDoc = (docTag: RawDocTag) => {
-        if (docTag.tagName === 'psalm-type') {
-            const match = docTag.textLeft.match(/^\s*(\w+)\s*=(.*)/s);
-            if (!match) {
-                return [];
-            }
-            const [, name, typeStr] = match;
-            return PsalmTypeExprParser(typeStr)
-                .map(parsed => ({
-                    name: name,
-                    type: parsed.type,
-                    textLeft: parsed.textLeft,
-                }));
-        } else {
+const assertPsalmTypeDoc = (docTag: RawDocTag) => {
+    if (docTag.tagName === 'psalm-type') {
+        const match = docTag.textLeft.match(/^\s*(\w+)\s*=(.*)/s);
+        if (!match) {
             return [];
         }
-    };
-
-    const assertPsalmImportTypeDoc = (docTag: RawDocTag) => {
-        if (docTag.tagName === 'psalm-import-type') {
-            const match = docTag.textLeft.match(/^\s*(\w+)\s+from\s+([a-zA-Z\\_][a-zA-Z\\_0-9]*)/);
-            if (!match) {
-                return [];
-            }
-            const [, name, path] = match;
-            // TODO: add circular references safeguard
-            return apiCtx.declByFqn(path).flatMap(classPsi => {
-                const nameToType = collectTypeAliases(classPsi, apiCtx);
-                const type = nameToType[name] || null;
-                return !type ? [] : [{name, type}];
-            })
-        } else {
-            return [];
-        }
-    };
-
-    const nameToType: Record<string, Type> = {};
-    const aliases = funcDeclPsi.parents().slice(-1)
-        .filter(root => root.node.phraseType === PhraseType.StatementList)
-        .flatMap(root => root.children())
-        .flatMap(chd => chd.asToken(TokenType.DocumentComment))
-        .flatMap(psi => getDocCommentText(psi.text()))
-        .flatMap(getRawTags)
-        .flatMap(docTag => [
-            ...assertPsalmTypeDoc(docTag),
-            ...assertPsalmImportTypeDoc(docTag),
-        ]);
-    for (const {name, type} of aliases) {
-        nameToType[name] = type;
+        const [, name, typeStr] = match;
+        return PsalmTypeExprParser(typeStr)
+            .map(parsed => ({
+                name: name,
+                type: parsed.type,
+                textLeft: parsed.textLeft,
+            }));
+    } else {
+        return [];
     }
-    return nameToType;
+};
+
+const collectTypeAliases = (funcDeclPsi: IPsi, apiCtx: IApiCtx): Record<string, Type> => {
+    const importOccurences = new Set<string>();
+    const collectTypeAliases = (funcDeclPsi: IPsi) => {
+        const assertPsalmImportTypeDoc = (docTag: RawDocTag) => {
+            if (docTag.tagName === 'psalm-import-type') {
+                const match = docTag.textLeft.match(/^\s*(\w+)\s+from\s+([a-zA-Z\\_][a-zA-Z\\_0-9]*)/);
+                if (!match) {
+                    return [];
+                }
+                const [, name, path] = match;
+                return apiCtx.declByFqn(path).flatMap(classPsi => {
+                    if (importOccurences.has(path)) {
+                        return []; // circular reference
+                    }
+                    importOccurences.add(path);
+                    const nameToType = collectTypeAliases(classPsi);
+                    importOccurences.delete(path);
+
+                    const type = nameToType[name] || null;
+                    return !type ? [] : [{name, type}];
+                })
+            } else {
+                return [];
+            }
+        };
+
+        const nameToType: Record<string, Type> = {};
+        const aliases = funcDeclPsi.parents().slice(-1)
+            .filter(root => root.node.phraseType === PhraseType.StatementList)
+            .flatMap(root => root.children())
+            .flatMap(chd => chd.asToken(TokenType.DocumentComment))
+            .flatMap(psi => getDocCommentText(psi.text()))
+            .flatMap(getRawTags)
+            .flatMap(docTag => [
+                ...assertPsalmTypeDoc(docTag),
+                ...assertPsalmImportTypeDoc(docTag),
+            ]);
+        for (const {name, type} of aliases) {
+            nameToType[name] = type;
+        }
+        return nameToType;
+
+    };
+    return collectTypeAliases(funcDeclPsi);
 };
 
 const getMethDoc = (funcDeclPsi: Psi<Phrase>) => {
