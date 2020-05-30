@@ -8,6 +8,16 @@ let whenLogsDirCheck: Promise<boolean> | null = null;
 
 const logsDirPath = __dirname + '/../out';
 
+let tailPromise = Promise.resolve();
+
+/** to make sure all entries will be in chronological order */
+const queued = (action: () => Promise<any>) => {
+    tailPromise = tailPromise
+        .catch(exc => {})
+        .then(action);
+    return tailPromise;
+};
+
 const Log = {
     info: async (msgData: any) => {
         if (whenLogsDirCheck === null) {
@@ -19,7 +29,7 @@ const Log = {
         if (hasLogsDir) {
             const path = logsDirPath + '/Debug_log.txt';
             const formatted = Debug.jsExport(msgData);
-            await fs.appendFile(path, formatted + ',\n');
+            await queued(() => fs.appendFile(path, formatted + ',\n'));
         }
     },
 };
