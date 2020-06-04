@@ -1,11 +1,45 @@
 import { Type } from "../structures/Type";
-import { IPsi, Opt } from "../helpers/Psi";
-import { PhraseType, TokenType } from "php7parser";
+import Psi, { IPsi, Opt } from "../helpers/Psi";
+import { PhraseType, TokenType, Token } from "php7parser";
 import { IApiCtx } from "../contexts/ApiCtx";
 import Log from "../Log";
 import ArgRes from "./ArgRes";
 import { getKey } from "deep-assoc-lang-server/src/helpers/Typing";
 import { findVarRefs, isExpr } from "deep-assoc-lang-server/src/helpers/ScopePsiFinder";
+import CheapTypeResolver from "deep-assoc-lang-server/src/resolvers/CheapTypeResolver";
+
+const parseAsAssignment = (varLeaf: Psi<Token>): Array<{
+    keyChain: (Type | {kind: 'IncrIdx'})[],
+    assignedValue: IPsi,
+}> => {
+    const keyChain: Type[] = [];
+    let dstPsi = varLeaf.parent()
+        .filter(par => par.node.phraseType === PhraseType.SimpleVariable)[0];
+    if (!dstPsi) {
+        return [];
+    }
+    let sub;
+    while (sub = dstPsi.parent().flatMap(p => p.asPhrase(PhraseType.SubscriptExpression))[0]) {
+        const braces = sub.children().slice(1);
+        const openPos = braces.findIndex(b => b.asToken(TokenType.OpenBracket));
+        const openPosOpt = openPos > -1 ? [openPos] : [];
+        const keyType: Type = openPosOpt
+            .flatMap(pos => braces.slice(openPos + 1))
+            .filter(psi => !psi.asToken(TokenType.Whitespace).length)
+            .flatMap(exprPsi => CheapTypeResolver({exprPsi}))
+            [0] || (
+                sub.text().match(/\[\s*\]$/)
+                    ? {kind: 'IncrIdx'} : {kind: 'IAny'}
+            );
+        keyChain.push(keyType);
+        dstPsi = sub;
+    }
+    return dstPsi.parent()
+        .filter(par => par.node.phraseType === PhraseType.SimpleAssignmentExpression)
+        .filter(ass => ass.nthChild(0).some(dstPsi.eq))
+        .flatMap(ass => ass.children().slice(1).filter(isExpr))
+        .map(assignedValue => ({keyChain, assignedValue}));
+};
 
 const VarRes = ({exprPsi, apiCtx}: {
     exprPsi: IPsi, apiCtx: IApiCtx,
@@ -23,15 +57,21 @@ const VarRes = ({exprPsi, apiCtx}: {
                 ];
                 return refs;
             })
+            .flatMap(psi => psi.asToken())
             .flatMap(leaf => [
-                ...leaf.parent()
-                    .filter(par => par.node.phraseType === PhraseType.SimpleVariable)
-                    .flatMap(leaf => leaf.parent()
-                        .filter(par => par.node.phraseType === PhraseType.SimpleAssignmentExpression)
-                        .filter(ass => ass.nthChild(0).some(leaf.eq))
-                    )
-                    .flatMap(ass => ass.children().slice(1).filter(isExpr))
-                    .flatMap(apiCtx.resolveExpr),
+                ...parseAsAssignment(leaf)
+                    .flatMap(({keyChain, assignedValue}) => {
+                        return apiCtx.resolveExpr(assignedValue)
+                            .map(valueType => {
+                                for (let i = keyChain.length - 1; i >= 0; --i) {
+                                    const keyType = keyChain[i];
+                                    valueType = keyType.kind === 'IncrIdx'
+                                        ? {kind: 'IListArr', valueType}
+                                        : {kind: 'IMapArr', keyType, valueType};
+                                }
+                                return valueType;
+                            });
+                    }),
                 ...leaf.parent()
                     .filter(par => par.node.phraseType === PhraseType.SimpleVariable)
                     .flatMap(leaf => leaf.parent())
