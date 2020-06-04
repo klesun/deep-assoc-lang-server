@@ -6,19 +6,7 @@ import { Type } from "../structures/Type";
 import Log from "deep-assoc-lang-server/src/Log";
 import PsalmFuncInfo from "deep-assoc-lang-server/src/structures/psalm/PsalmFuncInfo";
 import { flattenTypes } from "deep-assoc-lang-server/src/helpers/Typing";
-
-const findFunctionReturns = (stPsi: Psi<Phrase>): Psi<Phrase>[] => {
-    if (stPsi.node.phraseType === PhraseType.FunctionDeclarationBody) {
-        // skip anonymous functions, they have their own scope
-        return [];
-    } else if (stPsi.node.phraseType === PhraseType.ReturnStatement) {
-        return [stPsi];
-    } else {
-        return stPsi.children()
-            .flatMap(c => c.asPhrase())
-            .flatMap(findFunctionReturns);
-    }
-};
+import { findFunctionReturns, isExpr } from "deep-assoc-lang-server/src/helpers/ScopePsiFinder";
 
 export const assertFuncRef = (exprPsi: IPsi): Reference[] => {
     return [
@@ -52,9 +40,8 @@ const FuncCallRes = ({exprPsi, apiCtx}: {
             PhraseType.CompoundStatement,
         )   .flatMap(funcBody => funcBody.children())
             .flatMap(psi => psi.asPhrase(PhraseType.StatementList))
-            .flatMap(stList => stList.children().flatMap(psi => psi.asPhrase()))
             .flatMap(findFunctionReturns)
-            .flatMap(retPsi => retPsi.children().slice(1).flatMap(psi => psi.asPhrase()))
+            .flatMap(retPsi => retPsi.children().slice(1).filter(isExpr))
             .flatMap(apiCtx.resolveExpr)
     };
 

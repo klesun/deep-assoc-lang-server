@@ -5,6 +5,7 @@ import { IApiCtx } from "../contexts/ApiCtx";
 import Log from "../Log";
 import ArgRes from "./ArgRes";
 import { getKey } from "deep-assoc-lang-server/src/helpers/Typing";
+import { findVarRefs, isExpr } from "deep-assoc-lang-server/src/helpers/ScopePsiFinder";
 
 const VarRes = ({exprPsi, apiCtx}: {
     exprPsi: IPsi, apiCtx: IApiCtx,
@@ -12,9 +13,16 @@ const VarRes = ({exprPsi, apiCtx}: {
     const resolveVarRef = (exprPsi: IPsi) => {
         return exprPsi.asPhrase(PhraseType.SimpleVariable)
             .flatMap(psi => psi.asPhrase(PhraseType.SimpleVariable))
-            .flatMap(arrExpr => arrExpr.reference)
-            .flatMap(apiCtx.decl)
-            .flatMap(psi => psi.asToken(TokenType.VariableName))
+            .flatMap(varExpr => {
+                const mainDeclOpt = varExpr.reference.flatMap(apiCtx.decl);
+                const refs = [
+                    ...mainDeclOpt,
+                    ...findVarRefs(varExpr)
+                        .filter(psi => !mainDeclOpt.length // filter out dupes
+                                    || !psi.eq(mainDeclOpt[0])),
+                ];
+                return refs;
+            })
             .flatMap(leaf => [
                 ...leaf.parent()
                     .filter(par => par.node.phraseType === PhraseType.SimpleVariable)
@@ -22,7 +30,7 @@ const VarRes = ({exprPsi, apiCtx}: {
                         .filter(par => par.node.phraseType === PhraseType.SimpleAssignmentExpression)
                         .filter(ass => ass.nthChild(0).some(leaf.eq))
                     )
-                    .flatMap(ass => ass.children().slice(1).flatMap(psi => psi.asPhrase()))
+                    .flatMap(ass => ass.children().slice(1).filter(isExpr))
                     .flatMap(apiCtx.resolveExpr),
                 ...leaf.parent()
                     .filter(par => par.node.phraseType === PhraseType.SimpleVariable)
