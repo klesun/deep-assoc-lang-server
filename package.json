@@ -4,7 +4,6 @@
 	"version": "1.0.0",
 	"author": "klesun",
 	"license": "MIT",
-	"type": "module",
 	"engines": {
 		"vscode": "^1.43.0"
 	},
