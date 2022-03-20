@@ -1,4 +1,5 @@
 
+import Psi, { Node } from "deep-assoc-lang-server/src/helpers/Psi";
 import * as fsMod from 'fs';
 const fs = fsMod.promises;
 
@@ -33,5 +34,23 @@ const Log = {
         }
     },
 };
+
+
+function getParents(psi: Psi<Node>) {
+    let parent = psi.parent();
+    const parents = [];
+    while (parent[0]) {
+        parents.push(parent[0]);
+        parent = parent[0].parent();
+    }
+    return parents;
+}
+
+export const logNode = <T extends Psi<Node>>(msg: string): (value: T) => T => {
+    return value => {
+        console.log("hujlog " + msg, value, getParents(value));
+        return value;
+    };
+}
 
 export default Log;

@@ -1,7 +1,6 @@
-import Psi, { IPsi } from "deep-assoc-lang-server/src/helpers/Psi";
+import Psi, { Node, IPsi } from "deep-assoc-lang-server/src/helpers/Psi";
 import { IApiCtx } from "deep-assoc-lang-server/src/contexts/ApiCtx";
 import { CompletionItem } from "vscode-languageserver";
-import Log from "deep-assoc-lang-server/src/Log";
 import { TokenType, PhraseType, Phrase } from "php7parser";
 import { assertFuncRef } from "deep-assoc-lang-server/src/resolvers/FuncCallRes";
 import { Type } from "deep-assoc-lang-server/src/structures/Type";
@@ -49,12 +48,19 @@ const ArrCtorKeyPvdr = ({psi, apiCtx}: {
                     .flatMap(apiCtx.decl)
                     .flatMap(decl => decl.asToken(TokenType.CloseBrace))
                     .flatMap(bracePsi => bracePsi.parent())
-                    .flatMap(par => par.asPhrase(
-                        PhraseType.FunctionDeclarationBody,
-                        PhraseType.CompoundStatement,
-                    ))
+                    .flatMap(par => [
+                        // class methods have one extra level
+                        ...par.asPhrase(PhraseType.CompoundStatement)
+                            .flatMap(csPsi => csPsi.parent())
+                            .flatMap(par => par.asPhrase(PhraseType.MethodDeclarationBody)),
+                        // while namespace functions don't
+                        ...par.asPhrase(
+                            PhraseType.FunctionDeclarationBody,
+                            PhraseType.CompoundStatement, // not sure CompoundStatement is meaningful here
+                        ),
+                    ])
                     .flatMap(par => par.prevSibling(psi => !psi.asToken(TokenType.Whitespace).length))
-                    .flatMap(par => par.asPhrase(PhraseType.FunctionDeclarationHeader))
+                    .flatMap(par => par.asPhrase(PhraseType.FunctionDeclarationHeader, PhraseType.MethodDeclarationHeader))
                     .flatMap(hdr => hdr.children().flatMap(psi => psi.asPhrase(PhraseType.ParameterDeclarationList)))
                     .flatMap(lst => lst.nthChild(argOrder))
                     .flatMap(psi => ArgRes({psi, apiCtx}));
